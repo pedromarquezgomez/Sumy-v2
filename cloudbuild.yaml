@@ -1,0 +1,68 @@
+steps:
+  # Build agentic-rag-service
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/sumy-2/agentic-rag-service', './agentic_rag-service']
+    id: 'build-rag-service'
+
+  # Build sumiller-service
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/sumy-2/sumiller-service', './sumiller-service']
+    id: 'build-sumiller-service'
+
+  # Push agentic-rag-service
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/sumy-2/agentic-rag-service']
+    id: 'push-rag-service'
+    waitFor: ['build-rag-service']
+
+  # Push sumiller-service
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/sumy-2/sumiller-service']
+    id: 'push-sumiller-service'
+    waitFor: ['build-sumiller-service']
+
+  # Deploy agentic-rag-service to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'agentic-rag-service'
+      - '--image=gcr.io/sumy-2/agentic-rag-service'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=2Gi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=OPENAI_API_KEY=$$OPENAI_API_KEY'
+      - '--set-secrets=OPENAI_API_KEY=openai-api-key:latest'
+    id: 'deploy-rag-service'
+    waitFor: ['push-rag-service']
+
+  # Deploy sumiller-service to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'sumiller-service'
+      - '--image=gcr.io/sumy-2/sumiller-service'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--max-instances=10'
+      - '--set-env-vars=SEARCH_SERVICE_URL=https://agentic-rag-service-[HASH]-uc.a.run.app'
+      - '--set-secrets=OPENAI_API_KEY=openai-api-key:latest'
+    id: 'deploy-sumiller-service'
+    waitFor: ['push-sumiller-service', 'deploy-rag-service']
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: us-central1 
