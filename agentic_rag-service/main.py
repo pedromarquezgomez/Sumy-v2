@@ -78,13 +78,48 @@ class RAGService:
 
 
     def search(self, query: str, max_results: int = 3) -> List[Dict]:
-        """Realiza una búsqueda semántica en la colección."""
+        """Realiza una búsqueda semántica en la colección con filtros inteligentes."""
+        
+        # Detectar tipo de vino en la consulta
+        wine_type_filters = {
+            'tinto': 'Tinto',
+            'blanco': 'Blanco', 
+            'rosado': 'Rosado',
+            'champagne': 'Champagne',
+            'cava': 'Cava',
+            'fino': 'Fino',
+            'manzanilla': 'Manzanilla',
+            'amontillado': 'Amontillado',
+            'oloroso': 'Oloroso'
+        }
+        
+        query_lower = query.lower()
+        wine_type_filter = None
+        
+        # Buscar tipo específico en la consulta
+        for keyword, wine_type in wine_type_filters.items():
+            if keyword in query_lower:
+                wine_type_filter = wine_type
+                break
+        
         query_embedding = self.model.encode(query).tolist()
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=max_results,
-            include=["metadatas", "distances"]
-        )
+        
+        # Si se detectó un tipo específico, filtrar por él
+        if wine_type_filter:
+            logger.info(f"🔍 Búsqueda filtrada por tipo: {wine_type_filter}")
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=max_results * 2,  # Buscar más para tener opciones después del filtro
+                include=["metadatas", "distances"],
+                where={"type": wine_type_filter}
+            )
+        else:
+            # Búsqueda general sin filtros
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=max_results,
+                include=["metadatas", "distances"]
+            )
         
         formatted_results = []
         if results and results.get('ids')[0]:
@@ -93,7 +128,8 @@ class RAGService:
                 search_result['relevance_score'] = 1 - distance
                 formatted_results.append(search_result)
         
-        return formatted_results
+        # Limitar a los resultados solicitados
+        return formatted_results[:max_results]
 
 # Inicialización del servicio
 app = FastAPI(title="Agentic RAG Service", version="1.0.0")

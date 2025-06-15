@@ -1,3 +1,5 @@
+# sumiller-service/memory.py
+
 # Módulo de Memoria Integrada para Sumiller Service usando SQLite.
 import sqlite3
 import json
@@ -25,6 +27,7 @@ class SumillerMemory:
         """Inicializa la base de datos SQLite y sus tablas si no existen."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
+            # CORRECCIÓN: Añadida la columna 'user_name' a la tabla 'conversations'.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +40,7 @@ class SumillerMemory:
                     session_id TEXT
                 )
             """)
+            # CORRECCIÓN: Añadida la columna 'total_interactions' a la tabla 'user_preferences'.
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS user_preferences (
                     user_id TEXT PRIMARY KEY,
@@ -73,7 +77,7 @@ class SumillerMemory:
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (user_id, user_name, query, response, wines_json, session_id))
                 
-                # Actualizar contador de interacciones
+                # Este código ahora funcionará porque la columna existe.
                 conn.execute("""
                     UPDATE user_preferences 
                     SET total_interactions = total_interactions + 1,
@@ -92,14 +96,13 @@ class SumillerMemory:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 
-                # Información del usuario
+                # Este código ahora funcionará porque la columna existe.
                 user_info = conn.execute("""
                     SELECT preferences, total_interactions, favorite_wines 
                     FROM user_preferences 
                     WHERE user_id = ?
                 """, (user_id,)).fetchone()
                 
-                # Conversaciones recientes
                 conversations = conn.execute("""
                     SELECT query, response, timestamp, wines_recommended 
                     FROM conversations 
@@ -108,7 +111,6 @@ class SumillerMemory:
                     LIMIT ?
                 """, (user_id, limit)).fetchall()
                 
-                # Vinos mejor valorados
                 top_wines = conn.execute("""
                     SELECT wine_name, AVG(rating) as avg_rating, COUNT(*) as total_ratings 
                     FROM wine_ratings 
@@ -162,7 +164,6 @@ class SumillerMemory:
                     VALUES (?, ?, ?, ?, ?)
                 """, (user_id, user_name, wine_name, rating, notes))
                 
-                # Actualizar vinos favoritos si la valoración es alta
                 if rating >= 4:
                     user_info = conn.execute("""
                         SELECT favorite_wines FROM user_preferences WHERE user_id = ?
@@ -204,3 +205,4 @@ class SumillerMemory:
         except Exception as e:
             logger.error(f"Error al obtener estadísticas: {e}")
             return {"error": str(e)}
+

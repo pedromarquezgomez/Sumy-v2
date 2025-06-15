@@ -2,240 +2,170 @@
 import os
 import json
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, AsyncGenerator
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from starlette.responses import StreamingResponse
+from pydantic import BaseModel
 import httpx
-from openai import AsyncOpenAI
-from dotenv import load_dotenv
 from pathlib import Path
+import vertexai
+from vertexai.generative_models import GenerativeModel
 
 from query_filter import filter_and_classify_query, CATEGORY_RESPONSES, load_prompt_from_file
 from memory import SumillerMemory
+from migrate_db import migrate_database
 
-load_dotenv()
-
-# Configuración
+# --- INICIALIZACIÓN DE VERTEX AI ---
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = logging.getLogger(__name__)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-SEARCH_SERVICE_URL = os.getenv("SEARCH_SERVICE_URL")
+# La autenticación es automática en Cloud Run
+PROJECT_ID = os.getenv("GCP_PROJECT")
+LOCATION = os.getenv("GCP_REGION", "europe-west1")
+vertexai.init(project=PROJECT_ID, location=LOCATION)
 
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-app = FastAPI(title="Sumiller Service V2")
+# Cargar el modelo de IA para generación
+generation_model = GenerativeModel("gemini-2.0-flash")
+
+# Configuración del servicio
+SEARCH_SERVICE_URL = os.getenv("SEARCH_SERVICE_URL")
+app = FastAPI(title="Sumiller Service V2 (Vertex AI)")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Inicializar memoria
+# Ejecutar migración de base de datos al inicio
+try:
+    migrate_database()
+    logger.info("✅ Migración de base de datos completada")
+except Exception as e:
+    logger.error(f"❌ Error en migración de base de datos: {e}")
+
 memory = SumillerMemory()
 
-def load_secret_message_context() -> Dict[str, Any]:
-    """Carga el contexto para mensajes secretos desde el archivo de configuración."""
-    context = {}
-    try:
-        context_file = Path(__file__).parent / "prompts" / "secret_message_context.txt"
-        with open(context_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                
-                if '=' in line:
-                    key, value = line.split('=', 1)
-                    key = key.strip()
-                    value = value.strip()
-                    
-                    # Convertir valores booleanos
-                    if value.lower() == 'true':
-                        value = True
-                    elif value.lower() == 'false':
-                        value = False
-                    # Convertir valores numéricos
-                    elif value.isdigit():
-                        value = int(value)
-                    elif value.replace('.', '').isdigit():
-                        value = float(value)
-                    # Convertir listas
-                    elif ',' in value:
-                        value = [v.strip() for v in value.split(',')]
-                    
-                    context[key] = value
-        
-        logger.info(f"✅ Contexto de mensajes secretos cargado: {len(context)} configuraciones")
-        return context
-    except Exception as e:
-        logger.error(f"Error cargando contexto de mensajes secretos: {e}")
-        return {}
-
-# --- Modelos de Pydantic ---
 class ConversationMessage(BaseModel):
-    role: str  # "user" o "assistant"
+    role: str
     content: str
-    timestamp: Optional[str] = None
 
 class QueryRequest(BaseModel):
     query: str
-    user_id: Optional[str] = None  # Google Auth ID
-    user_name: Optional[str] = None  # Nombre del usuario
+    user_id: Optional[str] = None
+    user_name: Optional[str] = None
     conversation_history: List[ConversationMessage] = []
-    user_preferences: Dict[str, Any] = {}
 
-class SumillerResponse(BaseModel):
-    response: str
-    wines_recommended: List[Dict[str, Any]] = []
-    query_category: str
-    used_rag: bool
-
-# --- Funciones de Lógica ---
-async def search_wines(openai_client: AsyncOpenAI, query: str) -> List[Dict]:
-    """Busca vinos relevantes usando el servicio de búsqueda."""
+# --- Lógica de Streaming con Vertex AI ---
+async def search_wines(query: str) -> List[Dict]:
+    if not SEARCH_SERVICE_URL: return []
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{SEARCH_SERVICE_URL}/search",
-                json={"query": query}
-            )
-            if response.status_code == 200:
-                return response.json()
-            return []
+            response = await client.post(f"{SEARCH_SERVICE_URL}/search", json={"query": query}, timeout=10.0)
+            return response.json().get("wines", []) if response.status_code == 200 else []
     except Exception as e:
         logger.error(f"Error buscando vinos: {e}")
         return []
 
-async def generate_sumiller_response(query: str, wines: List[Dict], context: Dict, category: str, conversation_history: List[ConversationMessage], user_name: Optional[str] = None) -> str:
-    base_prompt = load_prompt_from_file("sumiller_generacion.txt")
-    if not openai_client or not base_prompt:
-        return "Lo siento, estoy teniendo problemas para generar una respuesta en este momento."
-
-    # Logging para depuración
-    logger.info(f"📝 Generando respuesta para: '{query}'")
-    logger.info(f"📚 Historial recibido: {len(conversation_history)} mensajes")
-    for i, msg in enumerate(conversation_history):
-        logger.info(f"  {i+1}. [{msg.role}]: {msg.content[:50]}...")
-
-    # Construir mensajes para OpenAI con historial completo
-    messages = [
-        {"role": "system", "content": base_prompt}
-    ]
-    
-    # Añadir historial de conversación previo (máximo últimos 8 mensajes)
-    if conversation_history:
-        logger.info(f"🔄 Añadiendo {len(conversation_history[-8:])} mensajes de historial a OpenAI")
-        for msg in conversation_history[-8:]:  # Últimos 8 mensajes para mantener contexto
-            messages.append({
-                "role": msg.role,  # "user" o "assistant"
-                "content": msg.content
-            })
-    else:
-        logger.info("🆕 Primera interacción - sin historial previo")
-    
-    # Construir contexto adicional
-    context_parts = []
-    if context.get("user_preferences"):
-        context_parts.append(f"Preferencias del usuario: {json.dumps(context['user_preferences'], ensure_ascii=False)}")
-    
-    # Construir mensaje actual
+async def generate_streaming_response(query: str, wines: List[Dict], context: Dict, conversation_history: List[ConversationMessage], category: str = None) -> AsyncGenerator[str, None]:
+    # Usar prompt específico según la categoría
     if category == "SECRET_MESSAGE":
-        secret_context = load_secret_message_context()
-        # Añadir solo el primer nombre del remitente al contexto
-        if user_name:
-            primer_nombre = user_name.split()[0]
-            secret_context["SENDER_NAME"] = primer_nombre
-        context_parts.append(f"Contexto de mensaje secreto: {json.dumps(secret_context, ensure_ascii=False)}")
-        current_message = f'Consulta de mensaje secreto: "{query}"'
-    elif category == "WINE_THEORY":
-        current_message = f'Consulta sobre teoría: "{query}"'
-    else: # WINE_SEARCH
-        wines_str = f"Vinos encontrados:\n{json.dumps(wines, indent=2, ensure_ascii=False)}" if wines else "No se encontraron vinos específicos en la base de datos."
-        current_message = f'Consulta: "{query}"\n\n{wines_str}'
+        base_prompt = load_prompt_from_file("secret_message_generation.txt")
+    elif category == "OFF_TOPIC":
+        base_prompt = load_prompt_from_file("off_topic_response.txt")
+    else:
+        base_prompt = load_prompt_from_file("sumiller_generacion.txt")
     
-    if context_parts:
-        current_message += f"\n\nContexto adicional:\n{chr(10).join(context_parts)}"
+    # Adaptar el historial para el modelo Gemini
+    history = [f"{msg.role}: {msg.content}" for msg in conversation_history[-8:]]
+    history_str = "\n".join(history)
     
-    # Añadir el mensaje actual del usuario
-    messages.append({
-        "role": "user",
-        "content": current_message
-    })
+    wines_str = f"Vinos encontrados:\n{json.dumps(wines, indent=2, ensure_ascii=False)}" if wines else "No se encontraron vinos específicos."
     
-    logger.info(f"💬 Enviando {len(messages)} mensajes a OpenAI (sistema + {len(messages)-2} historial + 1 actual)")
+    # Para mensajes secretos, incluir información específica
+    if category == "SECRET_MESSAGE":
+        # El destinatario SIEMPRE es Vicky, el remitente es quien hace la consulta
+        sender_name = context.get('sender_name', 'Tu sumiller')
+        sender_first_name = sender_name.split()[0] if sender_name else "Tu sumiller"
+        
+        full_prompt = f"""{base_prompt}
+
+INFORMACIÓN DEL MENSAJE:
+- Destinatario: Vicky (SIEMPRE)
+- Remitente: {sender_first_name}
+- Consulta original: {query}
+
+CONTEXTO ADICIONAL:
+{json.dumps(context, ensure_ascii=False)}
+
+HISTORIAL RECIENTE:
+{history_str}
+
+Genera un mensaje secreto ÚNICO y ORIGINAL usando las instrucciones anteriores.
+"""
+    else:
+        full_prompt = f"""{base_prompt}
+
+CONTEXTO DEL USUARIO:
+{json.dumps(context, ensure_ascii=False)}
+
+HISTORIAL DE CONVERSACIÓN:
+{history_str}
+
+CONSULTA ACTUAL:
+{query}
+
+VINOS ENCONTRADOS (si aplica):
+{wines_str}
+
+RESPUESTA:
+"""
     
     try:
-        response = await openai_client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=600
-        )
-        result = response.choices[0].message.content.strip()
-        logger.info(f"✅ Respuesta generada: {len(result)} caracteres")
-        return result
+        # --- LLAMADA DE STREAMING A VERTEX AI ---
+        stream = await generation_model.generate_content_async(full_prompt, stream=True)
+        async for chunk in stream:
+            yield chunk.text
     except Exception as e:
-        logger.error(f"Error generando respuesta con IA: {e}")
-        return "Parece que he tenido un problema conectando con mi sabiduría vinícola. ¿Podemos intentarlo de nuevo?"
+        logger.error(f"Error en el streaming de Vertex AI: {e}")
+        yield "Parece que he tenido un problema conectando con mi sabiduría vinícola."
 
 # --- Endpoints de la API ---
 @app.post("/query")
 async def query(request: QueryRequest):
-    """Endpoint principal para procesar consultas."""
-    try:
-        # Obtener contexto del usuario
-        user_context = await memory.get_user_context(request.user_id)
-        
-        # Clasificar la consulta
-        classification = await filter_and_classify_query(openai_client, request.query)
-        logger.info(f"Categoría detectada: {classification['category']} (confianza: {classification['confidence']})")
-        
-        # Si es GREETING, usar respuesta directa
-        if classification["category"] == "GREETING":
-            return {
-                "response": CATEGORY_RESPONSES[classification["category"]],
-                "category": classification["category"],
-                "wines": [],
-                "user_context": user_context
-            }
-        
-        # Para OFF_TOPIC, WINE_SEARCH, WINE_THEORY y SECRET_MESSAGE, usar generación de IA
+    classification = await filter_and_classify_query(request.query)
+    category = classification.get("category", "OFF_TOPIC")
+
+    async def stream_generator():
+        full_response = ""
         wines = []
-        if classification["should_use_rag"]:
-            wines = await search_wines(openai_client, request.query)
-            logger.info(f"Vinos encontrados: {len(wines)}")
         
-        # Generar respuesta
-        response = await generate_sumiller_response(
-            request.query,
-            wines,
-            user_context,
-            classification["category"],
-            request.conversation_history,
-            request.user_name
-        )
+        # Para SECRET_MESSAGE y OFF_TOPIC, siempre generar dinámicamente
+        if category in CATEGORY_RESPONSES and category not in ["SECRET_MESSAGE", "OFF_TOPIC"]:
+            response_content = CATEGORY_RESPONSES[category]
+            yield response_content
+            full_response = response_content
+        else:
+            if classification.get("should_use_rag"):
+                wines = await search_wines(request.query)
+            
+            user_context = await memory.get_user_context(request.user_id)
+            
+            # Añadir información del usuario al contexto para mensajes secretos
+            if category == "SECRET_MESSAGE" and request.user_name:
+                user_context['sender_name'] = request.user_name
+            
+            async for chunk in generate_streaming_response(request.query, wines, user_context, request.conversation_history, category):
+                yield chunk
+                full_response += chunk
         
-        # Guardar en memoria
         await memory.save_conversation(
             user_id=request.user_id,
             query=request.query,
-            response=response,
+            response=full_response,
             wines_recommended=wines,
-            session_id=request.user_id,  # Usar user_id como session_id
             user_name=request.user_name
         )
-        
-        return {
-            "response": response,
-            "category": classification["category"],
-            "wines": wines,
-            "user_context": user_context
-        }
-        
-    except Exception as e:
-        logger.error(f"Error procesando consulta: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(stream_generator(), media_type="text/plain; charset=utf-8")
 
 @app.get("/health")
 def health_check():
-    """Endpoint de health check para verificar que el servicio está activo."""
-    return {"status": "healthy", "service": "Sumiller Service V2", "timestamp": datetime.now().isoformat()}
+    return {"status": "healthy", "service": "Sumiller Service V2 (Vertex AI)", "timestamp": datetime.now().isoformat()}
+

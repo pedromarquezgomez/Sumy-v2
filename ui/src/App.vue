@@ -5,22 +5,23 @@
     <!-- Encabezado -->
     <header class="fixed top-0 w-full bg-brand-dark text-white shadow-lg p-4 flex justify-between items-center z-10">
       <!-- Título a la Izquierda -->
-      <div class="flex items-center gap-4">
-        <h1 class="font-hand text-4xl text-brand-cream">{{ appName }}</h1>
+      <div class="flex items-center">
+        <h1 class="font-hand text-2xl sm:text-4xl text-brand-cream">{{ appName }}</h1>
       </div>
 
       <!-- Avatar Centrado -->
       <div class="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2">
-        <img src="./assets/sumi.png" alt="Sumi-IA Avatar" class="w-32 h-32 rounded-full">
+        <img src="./assets/sumi.png" alt="Sumi-IA Avatar" class="w-24 h-24 sm:w-32 sm:h-32 rounded-full">
       </div>
 
       <!-- Info de Usuario a la Derecha -->
-      <div v-if="user" class="flex items-center gap-4">
-        <span class="text-brand-cream hidden sm:inline">{{ user.displayName }}</span>
-        <button @click="clearConversation" class="bg-brand-red hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm mr-2">
-          Nueva Conversación
+      <div v-if="user" class="flex items-center gap-1 sm:gap-4">
+        <span class="text-brand-cream hidden md:inline text-sm">{{ user.displayName }}</span>
+        <button @click="clearConversation" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm">
+          <span class="hidden sm:inline">Nueva Conversación</span>
+          <span class="sm:hidden">Nueva</span>
         </button>
-        <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm">
+        <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm ml-1 sm:ml-0">
           Salir
         </button>
       </div>
@@ -249,7 +250,7 @@ onMounted(() => {
         messages.value.push({
           id: Date.now(),
           role: 'bot',
-          text: `¡Hola ${currentUser.displayName}! Soy Sumy, tu sumiller virtual. ¿En qué puedo ayudarte hoy? 🍷`
+          text: `¡Hola ${currentUser.displayName}! Soy Sumy, El sumiller de este Restaurante.`
         });
         hasShownWelcome.value = true;
       }
@@ -297,7 +298,7 @@ const sendMessage = async () => {
     
     const apiUrl = import.meta.env.DEV 
       ? '/api/query' 
-      : 'http://localhost:8080/query'
+      : 'https://sumiller-service-v2-1080926141475.europe-west1.run.app/query'
 
     const result = await axios.post(apiUrl, { 
       query: query,
@@ -309,7 +310,8 @@ const sendMessage = async () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     
-    const botResponse = result.data?.response || 'Lo siento, no pude procesar tu consulta correctamente.';
+    // El backend devuelve la respuesta directamente como texto plano
+    const botResponse = result.data || 'Lo siento, no pude procesar tu consulta correctamente.';
     
     console.log('API Response:', result.data);
 
