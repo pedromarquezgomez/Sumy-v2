@@ -1,7 +1,5 @@
 <template>
   <div class="login-container">
-    <!-- Este componente ya no se usa, pero lo mantengo por si lo necesitas. -->
-    <!-- La lógica de login ahora está integrada directamente en App.vue para una mejor experiencia. -->
     <div v-if="!user" class="login-box">
       <h2 class="welcome-title">Bienvenido a Sumy</h2>
       <p class="welcome-subtitle">Tu Sumiller Personal con IA</p>
@@ -116,11 +114,11 @@ const signOut = async () => {
 }
 
 .google-icon {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
   background: white;
   border-radius: 50%;
-  padding: 2px;
+  padding: 4px;
 }
 /* ------------------------------------------- */
 

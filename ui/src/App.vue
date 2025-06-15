@@ -27,16 +27,8 @@
       </div>
     </header>
 
-    <!-- Contenedor de Bienvenida -->
-    <main class="flex-1 flex flex-col items-center justify-center p-4 bg-brand-cream pt-20" v-if="!user">
-      <div class="text-center p-12 bg-brand-light rounded-lg shadow-2xl max-w-md w-full mt-16">
-        <h2 class="text-4xl font-serif text-brand-dark mb-4">Bienvenido a Sumy</h2>
-        <p class="text-brand-dark opacity-80 mb-8">Su sumiller personal, potenciado por inteligencia artificial.</p>
-        <button @click="signIn" class="bg-google-blue hover:bg-google-blue-hover text-white font-roboto font-medium py-3 px-6 rounded-md text-lg transition-all transform hover:scale-105 shadow-lg">
-          Acceder con Google
-        </button>
-      </div>
-    </main>
+    <!-- Componente de Login -->
+    <Login v-if="!user" />
 
     <!-- Contenedor del Chat -->
     <main class="flex-1 overflow-y-auto px-6 pb-24 pt-36 bg-brand-cream" ref="chatContainer" v-else>
@@ -108,6 +100,7 @@ import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp, query, 
 import { initializeApp } from 'firebase/app'
 import axios from 'axios'
 import { marked } from 'marked'
+import Login from './components/Login.vue'
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -247,10 +240,11 @@ onMounted(() => {
       
       // Solo mostrar mensaje de bienvenida si no hay historial
       if (messages.value.length === 0 && !hasShownWelcome.value) {
+        const firstName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : 'Usuario';
         messages.value.push({
           id: Date.now(),
           role: 'bot',
-          text: `¡Hola ${currentUser.displayName}! Soy Sumy, El sumiller de este Restaurante.`
+          text: `¡Hola ${firstName}! Soy Sumy, El sumiller de este Restaurante.`
         });
         hasShownWelcome.value = true;
       }
@@ -258,15 +252,7 @@ onMounted(() => {
   })
 })
 
-const signIn = async () => {
-  const provider = new GoogleAuthProvider()
-  try {
-    await signInWithPopup(auth, provider)
-  } catch (err) {
-    error.value = 'No se ha podido iniciar sesión. Por favor, inténtelo de nuevo.'
-    console.error("Error de Firebase Auth:", err)
-  }
-}
+
 
 const handleSignOut = async () => {
   await signOut(auth)
