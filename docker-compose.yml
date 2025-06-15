@@ -1,0 +1,47 @@
+# docker-compose.yml - Orquestador para los servicios de BACKEND.
+# Este archivo levanta los servicios de RAG y Sumiller para desarrollo local.
+# La UI se desarrolla y despliega de forma completamente independiente.
+services:
+  # El RAG Service: nuestra base de conocimiento inteligente.
+  agentic-rag-service:
+    build:
+      context: ./agentic_rag-service
+      dockerfile: Dockerfile
+    volumes:
+      # Monta el código local en el contenedor para recarga en caliente.
+      # Cualquier cambio en tu código se reflejará sin reconstruir la imagen.
+      - ./agentic_rag-service:/app
+    ports:
+      - "8001:8080" # Expone el RAG en el puerto 8001 de tu máquina.
+    env_file: ./.env
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      # CORREGIDO: Usamos Python que está disponible en la imagen base.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s  # Damos tiempo suficiente para que los modelos de IA carguen.
+
+  # El Sumiller Service: la cara visible de nuestra aplicación.
+  sumiller-service:
+    build:
+      context: ./sumiller-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./sumiller-service:/app
+    ports:
+      - "8080:8080" # Expone el Sumiller en el puerto 8080 de tu máquina.
+    env_file: ./.env
+    depends_on:
+      # Se asegura de que el contenedor del RAG service esté saludable antes de iniciar.
+      agentic-rag-service:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      # CORREGIDO: Usamos Python para consistencia.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
