@@ -17,10 +17,13 @@
       <!-- Info de Usuario a la Derecha -->
       <div v-if="user" class="flex items-center gap-4">
         <span class="text-brand-cream hidden sm:inline">{{ user.displayName }}</span>
+        <button @click="clearConversation" class="bg-brand-red hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm mr-2">
+          Nueva Conversación
+        </button>
         <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm">
           Salir
-              </button>
-            </div>
+        </button>
+      </div>
     </header>
 
     <!-- Contenedor de Bienvenida -->
@@ -37,6 +40,13 @@
     <!-- Contenedor del Chat -->
     <main class="flex-1 overflow-y-auto px-6 pb-24 pt-36 bg-brand-cream" ref="chatContainer" v-else>
       <div class="max-w-3xl mx-auto w-full space-y-6">
+        <!-- Botón de cargar conversaciones previas -->
+        <div v-if="!conversationHistory.length && !hasShownWelcome" class="text-center">
+          <button @click="loadConversationHistory" class="bg-brand-dark hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm">
+            Cargar conversaciones previas
+          </button>
+        </div>
+
         <div v-for="message in messages" :key="message.id" class="flex items-end gap-3" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
           <!-- Avatar del Bot -->
           <div v-if="message.role === 'bot'" class="w-10 h-10 rounded-full bg-brand-dark flex items-center justify-center text-white font-serif text-xl flex-shrink-0">
@@ -49,8 +59,8 @@
           }">
             <div v-if="message.role === 'bot'" class="prose prose-sm max-w-none prose-brand" v-html="renderMarkdown(message.text)"></div>
             <p v-else class="text-base">{{ message.text }}</p>
-              </div>
-            </div>
+          </div>
+        </div>
   
         <!-- Indicador de Carga -->
         <div v-if="isLoading" class="flex items-end gap-3 justify-start">
@@ -87,13 +97,13 @@
         </form>
       </div>
     </footer>
-    </div>
-  </template>
+  </div>
+</template>
   
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth'
-import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
 import { initializeApp } from 'firebase/app'
 import axios from 'axios'
 import { marked } from 'marked'
@@ -112,17 +122,83 @@ const db = getFirestore(firebaseApp);
 // --- Estado Reactivo ---
 const user = ref(null)
 const messages = ref([])
-      const userQuery = ref('')
-      const isLoading = ref(false)
+const userQuery = ref('')
+const isLoading = ref(false)
 const error = ref(null)
 const chatContainer = ref(null)
+const conversationHistory = ref([])
+const userPreferences = ref({})
+const hasShownWelcome = ref(false)
+
+// --- Gestión de Memoria Local ---
+const buildConversationHistory = () => {
+  return messages.value
+    .filter(msg => msg.role === 'user' || msg.role === 'bot')
+    .map(msg => ({
+      role: msg.role === 'bot' ? 'assistant' : 'user',
+      content: msg.text,
+      timestamp: new Date().toISOString()
+    }))
+}
+
+const loadConversationHistory = async () => {
+  if (!user.value) return;
+  
+  try {
+    const conversationsQuery = query(
+      collection(db, 'conversations'),
+      where('userId', '==', user.value.uid),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+    
+    const querySnapshot = await getDocs(conversationsQuery);
+    const conversations = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      conversations.push({
+        question: data.question,
+        answer: data.answer,
+        createdAt: data.createdAt
+      });
+    });
+    
+    // Cargar conversaciones en orden cronológico
+    conversations.reverse().forEach(conv => {
+      messages.value.push({
+        id: Date.now() + Math.random(),
+        role: 'user',
+        text: conv.question
+      });
+      messages.value.push({
+        id: Date.now() + Math.random(),
+        role: 'bot', 
+        text: conv.answer
+      });
+    });
+    
+    conversationHistory.value = buildConversationHistory();
+    
+    await nextTick();
+    scrollToBottom();
+    
+  } catch (err) {
+    console.error("Error cargando conversaciones:", err);
+  }
+}
+
+const clearConversation = () => {
+  messages.value = [];
+  conversationHistory.value = [];
+  hasShownWelcome.value = false;
+}
 
 // --- Lógica de Guardado en Firestore ---
 const saveUserToFirestore = async (userData) => {
   if (!userData) return;
   const userRef = doc(db, "users", userData.uid);
   try {
-    // Usamos { merge: true } para no sobrescribir datos existentes y poder añadir campos a futuro.
     await setDoc(userRef, {
       uid: userData.uid,
       displayName: userData.displayName,
@@ -131,14 +207,12 @@ const saveUserToFirestore = async (userData) => {
     }, { merge: true });
   } catch (err) {
     console.error("Error al guardar el usuario en Firestore:", err);
-    // Opcional: podrías mostrar un error en la UI.
   }
 };
 
 const saveConversationToFirestore = async (question, answer) => {
   if (!user.value) return;
   
-  // Validar que answer no sea undefined o null
   if (!answer || answer === undefined || answer === null) {
     console.warn("No se puede guardar conversación: respuesta vacía o undefined");
     return;
@@ -149,8 +223,14 @@ const saveConversationToFirestore = async (question, answer) => {
       userId: user.value.uid,
       userName: user.value.displayName || 'Usuario',
       question: question || '',
-      answer: String(answer), // Asegurar que sea string
-      createdAt: serverTimestamp()
+      answer: String(answer),
+      createdAt: serverTimestamp(),
+      metadata: {
+        confidence: 0.95,  // Valor por defecto
+        wine_type: null,   // Se puede extraer de la respuesta
+        dish: null,        // Se puede extraer de la respuesta
+        alternatives: 0    // Se puede extraer de la respuesta
+      }
     });
   } catch (err) {
     console.error("Error al guardar la conversación en Firestore:", err);
@@ -158,17 +238,20 @@ const saveConversationToFirestore = async (question, answer) => {
 };
 
 // --- Lógica de Autenticación ---
-      onMounted(() => {
-  onAuthStateChanged(auth, (currentUser) => {
+onMounted(() => {
+  onAuthStateChanged(auth, async (currentUser) => {
     user.value = currentUser
     if (currentUser) {
-      saveUserToFirestore(currentUser); // Guardar usuario en Firestore al iniciar sesión
-      if (messages.value.length === 0) {
+      await saveUserToFirestore(currentUser);
+      
+      // Solo mostrar mensaje de bienvenida si no hay historial
+      if (messages.value.length === 0 && !hasShownWelcome.value) {
         messages.value.push({
           id: Date.now(),
           role: 'bot',
-          text: `Saludos, ${currentUser.displayName}. Soy Sumy, su Sumiller Digital. ¿En Qué puedo ayudarle?`
-        })
+          text: `¡Hola ${currentUser.displayName}! Soy Sumy, tu sumiller virtual. ¿En qué puedo ayudarte hoy? 🍷`
+        });
+        hasShownWelcome.value = true;
       }
     }
   })
@@ -188,6 +271,9 @@ const handleSignOut = async () => {
   await signOut(auth)
   messages.value = []
   userQuery.value = ''
+  conversationHistory.value = []
+  userPreferences.value = {}
+  hasShownWelcome.value = false
 }
 
 // --- Lógica del Chat ---
@@ -205,41 +291,39 @@ const sendMessage = async () => {
 
   try {
     const token = await user.value.getIdToken()
-    // Usar proxy en desarrollo, URL directa en producción
+    
+    // Construir historial para el backend
+    const conversationHistoryForBackend = buildConversationHistory()
+    
     const apiUrl = import.meta.env.DEV 
       ? '/api/query' 
       : 'http://localhost:8080/query'
 
     const result = await axios.post(apiUrl, { 
       query: query,
-      user_id: user.value.uid || 'anonymous_user'
+      user_id: user.value.uid,
+      user_name: user.value.displayName,
+      conversation_history: conversationHistoryForBackend,
+      user_preferences: userPreferences.value
     }, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     
     const botResponse = result.data?.response || 'Lo siento, no pude procesar tu consulta correctamente.';
     
-    // Debug logging
     console.log('API Response:', result.data);
-    console.log('Bot Response:', botResponse);
 
-    // Procesar respuesta estructurada del sumiller
-    const structuredMessages = parseStructuredResponse(botResponse);
-    
-    // Agregar mensajes de forma secuencial
-    for (const msgText of structuredMessages) {
-      messages.value.push({
-        id: Date.now() + Math.random(),
-        role: 'bot',
-        text: msgText
-      });
-      
-      // Pequeña pausa para efecto de escritura
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await nextTick();
-      scrollToBottom();
-    }
+    // Agregar respuesta del bot
+    messages.value.push({
+      id: Date.now() + Math.random(),
+      role: 'bot',
+      text: botResponse
+    });
 
+    // Actualizar historial local
+    conversationHistory.value = buildConversationHistory();
+
+    // Guardar en Firestore con nombre de usuario
     await saveConversationToFirestore(query, botResponse);
 
   } catch (err) {
@@ -269,32 +353,6 @@ const renderMarkdown = (text) => {
   return marked(text || '', { breaks: true, gfm: true });
 }
 
-const parseStructuredResponse = (response) => {
-  if (!response) return [response];
-  
-  const messages = [];
-  
-  // Buscar sección de principio
-  const principioMatch = response.match(/\[PRINCIPIO\](.*?)\[\/PRINCIPIO\]/s);
-  if (principioMatch) {
-    messages.push(principioMatch[1].trim());
-  }
-  
-  // Buscar solo la primera recomendación
-  const regex = /\[RECOMENDACION_1\](.*?)\[\/RECOMENDACION_1\]/s;
-  const match = response.match(regex);
-  if (match) {
-    messages.push(`🍷 **Mi Recomendación**\n\n${match[1].trim()}`);
-  }
-  
-  // Si no hay estructura, devolver respuesta completa (para saludos y conversación general)
-  if (messages.length === 0) {
-    return [response];
-  }
-  
-  return messages;
-}
-
 const appName = computed(() => "Sumy")
 </script>
 
@@ -309,7 +367,7 @@ const appName = computed(() => "Sumy")
   opacity: 0.9;
 }
 .prose-brand ul {
-  list-style-type: '��';
+  list-style-type: '🍷';
   padding-left: 1.5em;
 }
 .prose-brand li::marker {
@@ -318,5 +376,5 @@ const appName = computed(() => "Sumy")
 }
 .prose-brand strong {
   color: #6F1A07; /* brand-red */
-  }
-  </style>
+}
+</style>

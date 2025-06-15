@@ -2,7 +2,7 @@
 import os
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from openai import AsyncOpenAI
 from pathlib import Path
 
@@ -17,6 +17,62 @@ def load_prompt_from_file(file_name: str) -> str:
     except FileNotFoundError:
         logger.error(f"FATAL: Archivo de prompt no encontrado: {prompt_path}")
         return ""
+
+def load_romantic_keywords() -> Tuple[Dict[str, float], float, float]:
+    """Carga las palabras clave románticas y su configuración desde el archivo."""
+    keywords = {}
+    min_confidence = 0.7
+    exact_match_bonus = 0.1
+    
+    try:
+        keywords_file = Path(__file__).parent / "prompts" / "romantic_keywords.txt"
+        with open(keywords_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    value = value.strip()
+                    
+                    if key == 'MIN_CONFIDENCE':
+                        min_confidence = float(value)
+                    elif key == 'EXACT_MATCH_BONUS':
+                        exact_match_bonus = float(value)
+                    else:
+                        keywords[key] = float(value)
+        
+        logger.info(f"✅ Cargadas {len(keywords)} palabras clave románticas")
+        return keywords, min_confidence, exact_match_bonus
+    except Exception as e:
+        logger.error(f"Error cargando palabras clave románticas: {e}")
+        return {}, 0.7, 0.1
+
+def is_romantic_query_manual(user_query: str) -> Tuple[bool, str, float]:
+    """
+    Detecta si la consulta es romántica basándose en palabras clave.
+    Returns: (es_romantica, palabra_clave, confianza)
+    """
+    keywords, min_confidence, exact_match_bonus = load_romantic_keywords()
+    query_lower = user_query.lower()
+    
+    # Primero, buscar coincidencias exactas
+    for kw, base_confidence in keywords.items():
+        if kw == query_lower:
+            return True, kw, min(1.0, base_confidence + exact_match_bonus)
+    
+    # Luego, buscar inclusiones
+    for kw, base_confidence in keywords.items():
+        if kw in query_lower:
+            # Ajustar confianza basada en la longitud de la palabra clave
+            length_factor = min(0.2, len(kw) / 50)  # Máximo 0.2 de bonus por longitud
+            confidence = base_confidence + length_factor
+            if confidence >= min_confidence:
+                return True, kw, confidence
+    
+    return False, "", 0.0
 
 class IntelligentQueryFilter:
     """Clasifica las consultas de los usuarios usando un LLM para decidir la mejor estrategia de respuesta."""
@@ -62,9 +118,17 @@ class IntelligentQueryFilter:
     
     def _fallback_classification(self, user_query: str) -> Dict[str, Any]:
         """Clasificación de respaldo basada en palabras clave si el LLM falla."""
+        # Primero, comprobación de mensajes románticos
+        is_romantic, keyword, score = is_romantic_query_manual(user_query)
+        if is_romantic:
+            return {
+                "category": "SECRET_MESSAGE", 
+                "confidence": score, 
+                "reasoning": f"Coincidencia con '{keyword}' (confianza: {score:.2f})"
+            }
+        
+        # Después, comprobación por palabras clave exactas
         query_lower = user_query.lower()
-        if any(kw in query_lower for kw in ['mensaje', 'secreto', 'vicky', 'pedro']):
-            return {"category": "SECRET_MESSAGE", "confidence": 0.9, "reasoning": "Fallback: keywords de mensaje secreto"}
         if any(kw in query_lower for kw in ['recomienda', 'sugiere', 'busco', 'maridaje', 'para', 'con', 'rioja', 'ribera', 'vino']):
             return {"category": "WINE_SEARCH", "confidence": 0.7, "reasoning": "Fallback: keywords de búsqueda"}
         if any(kw in query_lower for kw in ['qué es', 'explica', 'diferencia', 'cómo', 'taninos', 'acidez', 'cata']):
