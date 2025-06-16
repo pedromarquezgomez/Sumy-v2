@@ -103,5 +103,9 @@ CATEGORY_RESPONSES = {
 async def filter_and_classify_query(user_query: str) -> Dict[str, Any]:
     filter_instance = IntelligentQueryFilter()
     classification = await filter_instance.classify_query(user_query)
-    classification["should_use_rag"] = (classification.get("category") == "WINE_SEARCH" and classification.get("confidence", 0) > 0.6)
+    # Usar RAG para búsquedas de vinos Y para teoría del vino
+    classification["should_use_rag"] = (
+        classification.get("category") in ["WINE_SEARCH", "WINE_THEORY"] 
+        and classification.get("confidence", 0) > 0.6
+    )
     return classification

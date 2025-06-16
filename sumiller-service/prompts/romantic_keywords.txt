@@ -1,5 +1,7 @@
-# Palabras clave para detectar mensajes románticos o personales
-# Formato: palabra_clave = confianza (0.0 a 1.0)
+#################################################################
+# LISTA DE PALABRAS CLAVE PARA DETECCIÓN DE MENSAJES ROMÁNTICOS
+#################################################################
+# Formato: palabra_clave = confianza (de 0.0 a 1.0)
 
 # Palabras clave básicas
 amor = 0.9
@@ -8,11 +10,11 @@ cariño = 0.9
 te quiero = 0.9
 te amo = 0.9
 
-# Nombres específicos
+# Nombres específicos (alta prioridad)
 vicky = 0.95
 pedro = 0.95
 
-# Frases comunes
+# Frases comunes (alta prioridad)
 mensaje secreto = 0.95
 mensaje para = 0.8
 palabras bonitas = 0.85
@@ -27,6 +29,6 @@ dedicatoria = 0.8
 mensaje romántico = 0.9
 palabras especiales = 0.85
 
-# Configuración
-MIN_CONFIDENCE = 0.7  # Umbral mínimo de confianza para considerar una coincidencia
-EXACT_MATCH_BONUS = 0.1  # Bonus de confianza para coincidencias exactas 
+# Configuración del detector
+MIN_CONFIDENCE = 0.7  # Umbral mínimo de confianza para considerar una coincidencia.
+EXACT_MATCH_BONUS = 0.1 # Bonus de confianza si la consulta es una coincidencia exacta.

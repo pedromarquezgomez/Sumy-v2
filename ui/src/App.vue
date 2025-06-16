@@ -244,7 +244,7 @@ onMounted(() => {
         messages.value.push({
           id: Date.now(),
           role: 'bot',
-          text: `¡Hola ${firstName}! Soy Sumy, El sumiller de este Restaurante.`
+          text: `¡Bienvenido, ${firstName}! Soy Sumy, tu sumiller digital. Si tienes cualquier duda sobre la carta de vinos, un maridaje o simplemente te apetece que te sorprenda, no dudes en preguntarme.`
         });
         hasShownWelcome.value = true;
       }
