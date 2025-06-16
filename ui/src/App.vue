@@ -284,7 +284,7 @@ const sendMessage = async () => {
     
     const apiUrl = import.meta.env.DEV 
       ? '/api/query' 
-      : 'https://sumiller-service-v2-1080926141475.europe-west1.run.app/query'
+      : `${import.meta.env.VITE_MAITRE_URL}/query`
 
     const result = await axios.post(apiUrl, { 
       query: query,
@@ -296,10 +296,46 @@ const sendMessage = async () => {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     
-    // El backend devuelve la respuesta directamente como texto plano
-    const botResponse = result.data || 'Lo siento, no pude procesar tu consulta correctamente.';
+    // Manejar la nueva respuesta con metadatos
+    const responseData = result.data;
+    const botResponse = responseData.response || responseData || 'Lo siento, no pude procesar tu consulta correctamente.';
     
-    console.log('API Response:', result.data);
+    // LOGGING DE TRAZABILIDAD EN CONSOLA
+    console.group('🍷 Sumy - Trazabilidad de Respuesta');
+    console.log('📝 Consulta:', query);
+    console.log('💬 Respuesta:', botResponse);
+    
+    if (responseData.metadata) {
+      console.log('📊 Metadatos completos:', responseData.metadata);
+      
+      const ragData = responseData.metadata.rag_data;
+      if (ragData) {
+        console.log('🔍 RAG utilizado:', ragData.rag_used);
+        if (ragData.rag_used) {
+          console.log('📚 Fuente de datos:', ragData.source);
+          console.log('📈 Total resultados RAG:', ragData.total_results);
+          
+          if (ragData.sources) {
+            console.log('🍷 Vinos de BD:', ragData.sources.wine_database_results);
+            console.log('📖 Conocimiento de texto:', ragData.sources.knowledge_text_results);
+            console.log('❓ Resultados desconocidos:', ragData.sources.unknown_results);
+            
+            if (ragData.sources.details && ragData.sources.details.length > 0) {
+              console.log('📋 Detalles de fuentes:', ragData.sources.details);
+            }
+          }
+        } else {
+          console.log('❌ RAG no utilizado - Razón:', ragData.reason);
+        }
+      }
+      
+      console.log('🏷️ Categoría de consulta:', responseData.metadata.category);
+      console.log('🎯 Clasificación:', responseData.metadata.classification);
+      console.log('🤖 Fuente de respuesta:', responseData.metadata.response_source);
+    } else {
+      console.log('⚠️ No hay metadatos de trazabilidad disponibles');
+    }
+    console.groupEnd();
 
     // Agregar respuesta del bot
     messages.value.push({
