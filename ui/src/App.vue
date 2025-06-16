@@ -17,11 +17,14 @@
       <!-- Info de Usuario a la Derecha -->
       <div v-if="user" class="flex items-center gap-1 sm:gap-4">
         <span class="text-brand-cream hidden md:inline text-sm">{{ user.displayName }}</span>
-        <button @click="clearConversation" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm">
-          <span class="hidden sm:inline">Nueva Conversación</span>
-          <span class="sm:hidden">Nueva</span>
+        <button @click="showWineMenu = true" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-colors text-xs sm:text-sm flex items-center gap-1 sm:gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span class="hidden sm:inline">Ver Carta</span>
+          <span class="sm:hidden">Carta</span>
         </button>
-        <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm ml-1 sm:ml-0">
+        <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm">
           Salir
         </button>
       </div>
@@ -33,13 +36,6 @@
     <!-- Contenedor del Chat -->
     <main class="flex-1 overflow-y-auto px-6 pb-24 pt-36 bg-brand-cream" ref="chatContainer" v-else>
       <div class="max-w-3xl mx-auto w-full space-y-6">
-        <!-- Botón de cargar conversaciones previas -->
-        <div v-if="!conversationHistory.length && !hasShownWelcome" class="text-center">
-          <button @click="loadConversationHistory" class="bg-brand-dark hover:opacity-80 text-white font-semibold py-2 px-4 rounded-md transition-opacity text-sm">
-            Cargar conversaciones previas
-          </button>
-        </div>
-
         <div v-for="message in messages" :key="message.id" class="flex items-end gap-3" :class="message.role === 'user' ? 'justify-end' : 'justify-start'">
           <!-- Avatar del Bot -->
           <div v-if="message.role === 'bot'" class="w-10 h-10 rounded-full bg-brand-dark flex items-center justify-center text-white font-serif text-xl flex-shrink-0">
@@ -90,17 +86,25 @@
         </form>
       </div>
     </footer>
+
+    <!-- Modal de la Carta de Vinos -->
+    <WineMenu :isVisible="showWineMenu" @close="showWineMenu = false" />
+    
+    <!-- Banner de Consentimiento de Cookies -->
+    <ConsentBanner @consent-updated="handleConsentUpdate" />
   </div>
 </template>
   
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth'
-import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp, query, where, orderBy, limit, getDocs } from 'firebase/firestore'
+import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { initializeApp } from 'firebase/app'
 import axios from 'axios'
 import { marked } from 'marked'
 import Login from './components/Login.vue'
+import WineMenu from './components/WineMenu.vue'
+import ConsentBanner from './components/ConsentBanner.vue'
 
 // --- Configuración de Firebase ---
 const firebaseConfig = {
@@ -123,6 +127,7 @@ const chatContainer = ref(null)
 const conversationHistory = ref([])
 const userPreferences = ref({})
 const hasShownWelcome = ref(false)
+const showWineMenu = ref(false)
 
 // --- Gestión de Memoria Local ---
 const buildConversationHistory = () => {
@@ -135,58 +140,7 @@ const buildConversationHistory = () => {
     }))
 }
 
-const loadConversationHistory = async () => {
-  if (!user.value) return;
-  
-  try {
-    const conversationsQuery = query(
-      collection(db, 'conversations'),
-      where('userId', '==', user.value.uid),
-      orderBy('createdAt', 'desc'),
-      limit(10)
-    );
-    
-    const querySnapshot = await getDocs(conversationsQuery);
-    const conversations = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      conversations.push({
-        question: data.question,
-        answer: data.answer,
-        createdAt: data.createdAt
-      });
-    });
-    
-    // Cargar conversaciones en orden cronológico
-    conversations.reverse().forEach(conv => {
-      messages.value.push({
-        id: Date.now() + Math.random(),
-        role: 'user',
-        text: conv.question
-      });
-      messages.value.push({
-        id: Date.now() + Math.random(),
-        role: 'bot', 
-        text: conv.answer
-      });
-    });
-    
-    conversationHistory.value = buildConversationHistory();
-    
-    await nextTick();
-    scrollToBottom();
-    
-  } catch (err) {
-    console.error("Error cargando conversaciones:", err);
-  }
-}
 
-const clearConversation = () => {
-  messages.value = [];
-  conversationHistory.value = [];
-  hasShownWelcome.value = false;
-}
 
 // --- Lógica de Guardado en Firestore ---
 const saveUserToFirestore = async (userData) => {
@@ -375,6 +329,28 @@ const scrollToBottom = () => {
 // --- Utilidades ---
 const renderMarkdown = (text) => {
   return marked(text || '', { breaks: true, gfm: true });
+}
+
+const handleConsentUpdate = (consentRecord) => {
+  console.log('🍪 Consentimiento actualizado:', consentRecord);
+  
+  // Aquí se pueden manejar las actualizaciones de consentimiento
+  // Por ejemplo, cargar/descargar servicios de terceros basados en el consentimiento
+  
+  if (consentRecord.settings.analytics) {
+    console.log('📊 Analytics habilitadas');
+    // Cargar Google Analytics, etc.
+  }
+  
+  if (consentRecord.settings.marketing) {
+    console.log('📢 Marketing habilitado');
+    // Cargar herramientas de marketing
+  }
+  
+  if (consentRecord.settings.preferences) {
+    console.log('⚙️ Preferencias habilitadas');
+    // Cargar configuraciones de preferencias
+  }
 }
 
 const appName = computed(() => "Sumy")

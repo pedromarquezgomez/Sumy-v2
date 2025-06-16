@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carta de Vinos Completa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #4a2c3e; /* Dark burgundy from image */
+            color: #fdeae0; /* Creamy text color from image */
+            background-image:
+                radial-gradient(circle at 100% 100%, #603950 0%, transparent 40%),
+                radial-gradient(circle at 0% 0%, #603950 0%, transparent 30%);
+        }
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .wine-title {
+            color: #fdeae0; /* Creamy title color */
+        }
+        .wine-price {
+            color: #fdeae0;
+            font-weight: 400;
+        }
+        .wine-description {
+            color: #e0d0c8; /* Slightly darker cream for descriptions */
+            font-size: 0.9em;
+            font-weight: 300;
+        }
+        .category-title {
+            color: #e0d0c8;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .wine-entry {
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(224, 208, 200, 0.1);
+        }
+        .wine-entry:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        /* Estilos específicos para formato personalizado */
+        @media print {
+            body {
+                font-size: 11px;
+                line-height: 1.3;
+            }
+            .container {
+                max-width: none;
+                padding: 1rem;
+            }
+            header {
+                margin-bottom: 1.5rem;
+            }
+            header h1 {
+                font-size: 3.5rem;
+                margin-top: 0.5rem;
+            }
+            header p {
+                font-size: 1rem;
+            }
+            .grid {
+                gap: 2rem;
+            }
+            section {
+                margin-bottom: 2rem;
+            }
+            section h2 {
+                font-size: 2.2rem;
+                margin-bottom: 1rem;
+            }
+            .wine-entry {
+                padding-bottom: 0.8rem;
+            }
+            .wine-entry h3 {
+                font-size: 1rem;
+                font-weight: 600;
+            }
+            .wine-description {
+                font-size: 0.85rem;
+                line-height: 1.3;
+                margin-top: 0.2rem;
+            }
+            .wine-price {
+                font-size: 1rem;
+                font-weight: 500;
+            }
+            .space-y-5 > * + * {
+                margin-top: 1rem;
+            }
+            footer {
+                margin-top: 2rem;
+                padding-top: 1rem;
+            }
+            footer img {
+                height: 4rem;
+                width: 4rem;
+            }
+            footer p {
+                font-size: 0.9rem;
+            }
+            footer .flex {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-8 md:p-16 max-w-6xl">
+
+        <header class="text-center mb-12">
+            <p class="font-serif text-lg">Mi proyecto TFM</p>
+            <h1 class="font-serif text-6xl md:text-7xl mt-2 wine-title">Carta de Vinos</h1>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-10">
+
+            <!-- Columna Izquierda -->
+            <div>
+                <!-- Vinos Blancos -->
+                <section class="mb-10">
+                    <h2 class="font-serif text-4xl mb-6 wine-title">Vinos Blancos</h2>
+                    <div class="space-y-5">
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Belondrade & Lurtón</h3> <span class="wine-price">45.00€</span> </div> <p class="wine-description">Verdejo | D.O. Rueda. Un icono, fermentado en barrica, complejo y untuoso.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Vindel</h3> <span class="wine-price">38.00€</span> </div> <p class="wine-description">Albariño | D.O. Rías Baixas. Glicérico y sedoso, con notas de fruta de hueso y membrillo.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Javier Sanz V Malcorta</h3> <span class="wine-price">26.00€</span> </div> <p class="wine-description">Verdejo Malcorta | D.O. Rueda. Cítricos, flores blancas y marcada acidez.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">La Capilla</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Verdejo, Sauvignon Blanc | D.O. Rueda. Nariz rica con fruta blanca, minerales y tostados finos.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Viñas del Vero Gewürztraminer</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Gewürztraminer | D.O. Somontano. Aroma floral embriagador con fruta exótica.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Enate 234 Chardonnay</h3> <span class="wine-price">21.00€</span> </div> <p class="wine-description">Chardonnay | D.O. Somontano. Vendimia manual, fresco y versátil.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Naia</h3> <span class="wine-price">21.00€</span> </div> <p class="wine-description">Verdejo | D.O. Rueda. Gran relación calidad-precio. Tipicidad y coherencia.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Martín Códax</h3> <span class="wine-price">20.00€</span> </div> <p class="wine-description">Albariño | D.O. Rías Baixas. Expresivo y aromático. Ideal con frutos del mar.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Don Pedro de Soutomaior</h3> <span class="wine-price">20.00€</span> </div> <p class="wine-description">Albariño | D.O. Rías Baixas. Aromas de fruta madura, piña, maracuyá y florales.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Vionta Godello</h3> <span class="wine-price">20.00€</span> </div> <p class="wine-description">Godello | D.O. Monterrei. Afrutado a manzana verde y pera. Equilibrio perfecto.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">El Loco de Finca La Colina</h3> <span class="wine-price">19.00€</span> </div> <p class="wine-description">Verdejo, Sauvignon Blanc | D.O. Rueda. Aromas a mango, melocotón y piña con toques herbáceos.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Terras do Cigarrón Godello</h3> <span class="wine-price">18.00€</span> </div> <p class="wine-description">Godello | D.O. Monterrei. Notas florales blancas, tropicales y especiados. Frescura y elegancia.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Añares Torrenova</h3> <span class="wine-price">17.00€</span> </div> <p class="wine-description">Verdejo | D.O. Rueda. Nariz franca con frutas blancas, notas minerales y miel.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Alba Martín</h3> <span class="wine-price">17.00€</span> </div> <p class="wine-description">Albariño | D.O. Rías Baixas. Reflejo del Val do Salnés. Fresco, frutal y final ligeramente salino.</p> </div>
+                    </div>
+                </section>
+
+                <!-- Vinos Rosados -->
+                 <section>
+                    <h2 class="font-serif text-4xl mb-6 wine-title">Vinos Rosados</h2>
+                    <div class="space-y-5">
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Lou Rosé</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Cinsault, Garnacha | Côtes de Provence. Frutosidad intensa de grosella y fresa.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Chivite Las Fincas Rosado</h3> <span class="wine-price">23.00€</span> </div> <p class="wine-description">Garnacha, Tempranillo | V.T. Tierra Tres Riberas. Suave, equilibrado y muy frutal.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Enate Cabernet Sauvignon</h3> <span class="wine-price">21.00€</span> </div> <p class="wine-description">Cabernet Sauvignon | D.O. Somontano. Con alma de blanco y cuerpo de tinto.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Garnacha Rosado Sotomanrique</h3> <span class="wine-price">17.00€</span> </div> <p class="wine-description">Garnacha | D.O.P. Cebreros. Elegante, complejo y fresco con notas de frutos rojos y jazmín.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Amatista Moscato Rosado</h3> <span class="wine-price">17.00€</span> </div> <p class="wine-description">Moscatel, Garnacha | D.O. Valencia. Dulce, ligero y refrescante con solo 5% de alcohol.</p> </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Columna Derecha -->
+            <div>
+                 <!-- Vinos Espumosos -->
+                <section class="mb-10">
+                    <h2 class="font-serif text-4xl mb-6 wine-title">Vinos Espumosos</h2>
+                    <div class="space-y-5">
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Louis Roederer Cristal</h3> <span class="wine-price">225.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. Una leyenda de textura sedosa y potencial mineral.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Dom Pérignon</h3> <span class="wine-price">199.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. El estandarte de la calidad, solo en añadas extraordinarias.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Taittinger Prestige Rosé</h3> <span class="wine-price">75.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. Suculento, afrutado y muy equilibrado.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Veuve Clicquot Yellow Label</h3> <span class="wine-price">60.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. Un icono internacional, el legado de la Viuda Clicquot.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Taittinger Brut Réserve</h3> <span class="wine-price">55.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. Delicado con sabores a fruta fresca y miel.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Moët & Chandon Brut Impérial</h3> <span class="wine-price">50.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. El champagne más emblemático de la Maison.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Henri Abele Brut</h3> <span class="wine-price">43.00€</span> </div> <p class="wine-description">Champagne | A.O.C. Champagne. Dorado con notas de pan tostado, miel y canela.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Segura Viudas Torre Galimany</h3> <span class="wine-price">25.00€</span> </div> <p class="wine-description">Cava | D.O. Cava Cataluña. Fruta sobre madera, tropical y flores blancas con fondo especiado.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Botani Espumoso</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Espumoso | Sierras de Málaga. Aromático con recuerdos a flores blancas, panadería y moscatel.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">André Delorme Rosé Brut</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Crémant | Crémant Bourgogne. Rosa salmón brillante. Notas de fresas y frutas rojas.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">André Delorme Blanc de Blanc Crémant</h3> <span class="wine-price">22.00€</span> </div> <p class="wine-description">Crémant | Crémant Bourgogne. Nariz de bollería y melocotón, burbuja finísima.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Freixenet Trepat Rosado</h3> <span class="wine-price">21.00€</span> </div> <p class="wine-description">Cava | D.O. Cava Cataluña. Burbuja fina. Aromas de frutas rojas silvestres y cítricos.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Beso de Rechenna Brut Nature</h3> <span class="wine-price">20.00€</span> </div> <p class="wine-description">Cava | D.O. Cava Utiel Requena. Textura cremosa y aromas de fruta blanca madura.</p> </div>
+                    </div>
+                </section>
+                
+                <!-- Vinos Generosos -->
+                <section>
+                    <h2 class="font-serif text-4xl mb-6 wine-title">Vinos Generosos</h2>
+                     <div class="space-y-5">
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Tío Pepe 3 Palmas</h3> <span class="wine-price">44.00€</span> </div> <p class="wine-description">Fino | D.O. Jerez. Joya de producción limitada. Final salino y cremoso.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Gran Barquero Palo Cortado</h3> <span class="wine-price">37.00€</span> </div> <p class="wine-description">Palo Cortado | D.O. Montilla Moriles. Nariz fina y cuerpo de oloroso.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Medium Carvajal</h3> <span class="wine-price">36.00€</span> </div> <p class="wine-description">Medium | D.O. Jerez. Castaño con reflejos verdosos. Textura sedosa y golosa.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Gran Barquero Amontillado</h3> <span class="wine-price">26.00€</span> </div> <p class="wine-description">Amontillado | D.O. Montilla Moriles. Muy estructurado, con 25 a 30 años de crianza.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Tío Pepe en Rama</h3> <span class="wine-price">24.00€</span> </div> <p class="wine-description">Fino | D.O. Jerez. En estado puro, sin filtrar. Color oro pálido con flor en suspensión.</p> </div>
+                        <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Alfonso Oloroso Seco</h3> <span class="wine-price">23.00€</span> </div> <p class="wine-description">Oloroso | D.O. Jerez. Gran carácter, ideal para carnes rojas y de caza.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Viña AB Amontillado</h3> <span class="wine-price">22.00€</span> </div> <p class="wine-description">Amontillado | D.O. Jerez. Color ámbar característico tras 8 años en botas de roble.</p> </div>
+                         <div class="wine-entry"> <div class="flex justify-between items-baseline"> <h3 class="text-lg font-semibold">Tío Pepe</h3> <span class="wine-price">18.00€</span> </div> <p class="wine-description">Fino | D.O. Jerez. El clásico, fantásticamente refrescante.</p> </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <footer class="text-center mt-16 pt-8 border-t border-t-[rgba(224,208,200,0.1)]">
+            <div class="flex flex-col md:flex-row items-center justify-center gap-6">
+                 <img src="https://i.ibb.co/YFFRkntD/sumi.png" alt="Logo de Sumy, el sumiller IA" class="h-20 w-20 rounded-full object-cover border-2 border-[rgba(224,208,200,0.5)]">
+                <div class="flex items-center gap-4">
+                     <div>
+                        <p class="font-serif text-base">Hable con Sumy, tu sumiller personal</p>
+                        <p class="text-xs text-gray-400">Escanea el código para recomendaciones</p>
+                    </div>
+                    <div class="bg-white p-2 rounded-md inline-block shadow-lg">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://maitre-ia.web.app/" alt="Código QR para la carta digital">
+                    </div>
+                </div>
+            </div>
+        </footer>
+
+    </div>
+</body>
+</html>
