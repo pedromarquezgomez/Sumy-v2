@@ -17,14 +17,14 @@
       <!-- Info de Usuario a la Derecha -->
       <div v-if="user" class="flex items-center gap-1 sm:gap-4">
         <span class="text-brand-cream hidden md:inline text-sm">{{ user.displayName }}</span>
-        <button @click="showWineMenu = true" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-colors text-xs sm:text-sm flex items-center gap-1 sm:gap-2">
+        <button @click="showWineMenu = true" class="btn-wine-carta text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-lg transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm flex items-center gap-1 sm:gap-2 shadow-lg">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span class="hidden sm:inline">Ver Carta</span>
           <span class="sm:hidden">Carta</span>
         </button>
-        <button @click="handleSignOut" class="bg-brand-red hover:opacity-80 text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-md transition-opacity text-xs sm:text-sm">
+        <button @click="handleSignOut" class="btn-exit text-white font-semibold py-1.5 px-2 sm:py-2 sm:px-4 rounded-lg transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm shadow-lg">
           Salir
         </button>
       </div>
@@ -79,7 +79,7 @@
           <button 
             type="submit"
             :disabled="isLoading"
-            class="bg-brand-dark hover:opacity-80 text-white font-semibold p-3 rounded-lg disabled:opacity-50 transition-opacity flex-shrink-0"
+            class="btn-send text-white font-semibold p-3 rounded-lg disabled:opacity-50 transition-all duration-300 flex-shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 12h14" /></svg>
           </button>
@@ -97,25 +97,16 @@
   
 <script setup>
 import { ref, onMounted, nextTick, computed } from 'vue'
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth'
-import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { initializeApp } from 'firebase/app'
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth'
+import { doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from './firebase'
 import axios from 'axios'
 import { marked } from 'marked'
 import Login from './components/Login.vue'
 import WineMenu from './components/WineMenu.vue'
 import ConsentBanner from './components/ConsentBanner.vue'
 
-// --- Configuración de Firebase ---
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
+// Firebase ya está configurado en ./firebase.ts
 
 // --- Estado Reactivo ---
 const user = ref(null)
@@ -376,5 +367,34 @@ const appName = computed(() => "Sumy")
 }
 .prose-brand strong {
   color: #6F1A07; /* brand-red */
+}
+
+/* Paleta inspirada en vino tinto - Botones elegantes */
+.btn-wine-carta {
+  background-color: #8c1c13; /* Burdeos oscuro */
+  border: none;
+}
+.btn-wine-carta:hover {
+  background-color: #6b1510; /* Burdeos más oscuro en hover */
+  box-shadow: 0 8px 25px rgba(140, 28, 19, 0.3);
+}
+
+.btn-exit {
+  background-color: #424242; /* Gris oscuro */
+  border: none;
+}
+.btn-exit:hover {
+  background-color: #333333; /* Gris más oscuro en hover */
+  box-shadow: 0 8px 25px rgba(66, 66, 66, 0.3);
+}
+
+.btn-send {
+  background-color: #a62929; /* Burdeos medio */
+  border: none;
+}
+.btn-send:hover:not(:disabled) {
+  background-color: #8c1c13; /* Burdeos oscuro en hover */
+  box-shadow: 0 6px 20px rgba(166, 41, 41, 0.4);
+  transform: translateY(-1px);
 }
 </style>

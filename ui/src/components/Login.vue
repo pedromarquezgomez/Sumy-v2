@@ -14,8 +14,8 @@
       </button>
     </div>
     <div v-else class="user-info">
-      <img :src="user.photoURL" :alt="user.displayName" class="user-avatar" />
-      <span class="user-name">{{ user.displayName }}</span>
+      <img :src="user.photoURL || ''" :alt="user.displayName || 'Usuario'" class="user-avatar" />
+      <span class="user-name">{{ user.displayName || 'Usuario' }}</span>
       <button @click="signOut" class="logout-btn">Salir</button>
     </div>
   </div>
@@ -23,10 +23,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
-
-// Inicializa Firebase (asume que ya está hecho en tu main.ts o un plugin)
-const auth = getAuth();
+import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
+import { auth } from '../firebase';
 const googleProvider = new GoogleAuthProvider();
 
 const user = ref<User | null>(null);

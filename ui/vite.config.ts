@@ -26,5 +26,19 @@ export default defineConfig({
         }
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue']
+        }
+      }
+    },
+    assetsInlineLimit: 4096, // 4kb
+    chunkSizeWarningLimit: 1000
+  },
+  optimizeDeps: {
+    include: ['vue']
   }
 })
